@@ -293,23 +293,20 @@ class CurlController extends Controller
 
     //支付宝手机端支付
     public function alipay(){
-        //请求地址
-        $ali_gateway="https://openapi.alipay.com/gateway.do";
-
         //biz_content请求参数
         $biz_content=[
             'subject'       =>'测试订单'.mt_rand(11111,99999).time(),
             'out_trade_no' =>'1810'.mt_rand(11111,99999).time(),
             'total_amount' =>mt_rand(1,10),
+            'charset'   =>'utf-8',
             'product_code' =>'QUICK_WAP_WAY'
         ];
         //数据
         $data=[
             'app_id'    =>'2016092500595837',
             'method'    =>'alipay.trade.wap.pay',
-            'charset'   =>'utf-8',
             'sign_type' =>'RSA2',
-            'timestamp' =>date('Y-m-d H:i:s'),
+            'timestamp' =>date('Y-m-d H:i:s',time()),
             'version'   =>'1.0',
             'biz_content'=>json_encode($biz_content,JSON_UNESCAPED_UNICODE)
         ];
@@ -323,22 +320,23 @@ class CurlController extends Controller
         //取出拼接数据最后的&
         $strl=rtrim($str,'&');
         //获取私钥
-        $priva=openssl_get_privatekey("file://".storage_path('priva.pem'));
+        $priva=openssl_get_privatekey(file_get_contents("file://".storage_path('priva.pem')));
         //通过私钥生成签名
         openssl_sign($strl,$sign,$priva,OPENSSL_ALGO_SHA256);
         //在进行base64加密
         $ensign=base64_encode($sign);
         //将生成的签名放入数组中
-        $data['ensign']=$ensign;
-        //跳转地址
-        $url="http://www.1810lumen.com/alipay";
-        //使用Guzzle传值
-        $clinet = new Client();
-        $response = $clinet ->request("POST",$ali_gateway,[
-            'form_params'=>$data
-        ]);
-        echo $response->getBody();
-
+        $data['sign']=$ensign;
+        //urlencode
+        $param_str='?';
+        foreach($data as $k=>$v){
+            $param_str.=$k.'='.urlencode($v).'&';
+        }
+        //请求地址
+        $ali_gateway="https://openapi.alipaydev.com/gateway.do";
+        $param_str=rtrim($param_str,'&');
+        $url=$ali_gateway.$param_str;
+        header("location:".$url);
     }
 
 
